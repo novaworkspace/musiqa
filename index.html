@@ -61,14 +61,14 @@ button{font:inherit;color:inherit}
 .freq{position:absolute;right:12px;font-family:var(--font-mono);font-size:10px;color:var(--ink-subtle);transform:translateY(-50%);padding:1px 4px;border-radius:4px;background:rgba(11,12,14,.6)}
 .head{position:absolute;left:22px;top:20px;right:22px;display:flex;flex-direction:column;gap:6px}
 .menu-wrap{position:relative;align-self:flex-start;z-index:5}
-.st-btn{display:flex;align-items:center;gap:8px;height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--border);background:rgba(11,12,14,.6);color:var(--ink-muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;cursor:pointer}
-.st-btn:hover{color:var(--ink);border-color:var(--border-strong)}
-.app.menu-open .st-btn{border-color:var(--accent)}
-.st-btn .dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
-.st-btn svg{transition:transform .2s}
-.app.menu-open .st-btn svg{transform:rotate(180deg)}
+.st-title{display:inline;padding:0;margin:0;border:0;background:none;color:inherit;font:inherit;letter-spacing:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.st-title .chev{display:inline-flex;align-items:center;justify-content:center;width:.62em;height:.62em;margin-left:.16em;vertical-align:.06em;border-radius:50%;border:1px solid var(--border-strong);background:rgba(11,12,14,.6);color:var(--ink-muted);transition:border-color .15s,color .15s}
+.st-title .chev svg{width:.3em;height:.3em;transition:transform .2s}
+.st-title:hover .chev,.app.menu-open .st-title .chev{border-color:var(--accent);color:var(--ink)}
+.app.menu-open .st-title .chev svg{transform:rotate(180deg)}
+.st-title:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:6px}
 .backdrop{position:fixed;inset:0;z-index:1}
-.menu{position:absolute;left:0;top:32px;z-index:2;width:240px;padding:6px;border-radius:12px;border:1px solid var(--border-strong);background:var(--raised);box-shadow:0 12px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:2px}
+.menu{position:absolute;left:0;top:calc(100% + 10px);z-index:2;width:240px;padding:6px;border-radius:12px;border:1px solid var(--border-strong);background:var(--raised);box-shadow:0 12px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:2px}
 .mg{padding:8px 10px 4px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--ink-subtle)}
 .mi{display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;border:none;border-radius:8px;background:transparent;color:var(--ink-muted);font-size:13px;font-weight:600;text-align:left;cursor:pointer}
 .mi:hover{background:var(--hover);color:var(--ink)}
@@ -134,7 +134,7 @@ input[type=range]:focus-visible{outline-offset:4px;border-radius:4px}
 .fgrid.five .mute{padding:0 2px;gap:4px}
 @media (max-width:440px){.fgrid.five .mute{flex-direction:column;height:auto;gap:3px;padding:3px 0}.fgrid.five .mute span{max-width:100%}}
 @media (hover:none){.kbd-hint{display:none}}
-@media (prefers-reduced-motion: reduce){.st-btn svg,.vf{transition:none}}
+@media (prefers-reduced-motion: reduce){.st-title svg,.st-title .chev,.vf{transition:none}}
 </style>
 
 <div class="app" data-mood="lofi" id="app">
@@ -147,14 +147,10 @@ input[type=range]:focus-visible{outline-offset:4px;border-radius:4px}
     <div class="freq" id="f100">100 Hz</div>
     <div class="head">
       <div class="menu-wrap">
-        <button class="st-btn" id="stBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="menu">
-          <span class="dot"></span>STATION <span id="stNum">04</span>
-          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
-        </button>
+        <h1><button class="st-title" id="stBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="menu" title="Change station"><span id="moodName">Lo-fi</span><span class="chev" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></span></button></h1>
         <div class="backdrop" id="backdrop" hidden></div>
         <div class="menu" id="menu" role="menu" aria-label="Stations" hidden></div>
       </div>
-      <h1 id="moodName">Lo-fi</h1>
       <div class="meta" id="info">Beats, vinyl and jazzy chords</div>
     </div>
     <ol class="log" id="log" aria-live="polite"><li><time>00:00</time><span>press Play or Space</span></li></ol>
@@ -1359,7 +1355,7 @@ function renderInfo(){$('#info').textContent=(E.mood&&E.mood.id===state.mood&&pl
 function selectMood(id,force){
   if(id===state.mood&&!force)return;
   state.mood=id;app.dataset.mood=id;
-  $('#moodName').textContent=MOODS[id].name;$('#stNum').textContent=String(ORDER.indexOf(id)+1).padStart(2,'0');
+  $('#moodName').textContent=MOODS[id].name;
   renderSound();readGlow();
   if(E.ctx)startMood(id);
   renderInfo();updRing();updateSession();save();
@@ -1472,7 +1468,7 @@ $('#f1k').style.top=yOf(1000);$('#f100').style.top=yOf(100);
 
 // ---------- boot
 app.dataset.mood=state.mood;
-$('#moodName').textContent=MOODS[state.mood].name;$('#stNum').textContent=String(ORDER.indexOf(state.mood)+1).padStart(2,'0');
+$('#moodName').textContent=MOODS[state.mood].name;
 {const v=Math.round(state.vol*100),el=$('#vol');el.value=v;el.style.setProperty('--pct',v+'%');$('#volOut').textContent=v+'%'}
 renderSound();renderInfo();readGlow();updRing();updateSession();
 })();
