@@ -132,7 +132,7 @@ input[type=range]:focus-visible{outline-offset:4px;border-radius:4px}
 .fader.muted .mute span{text-decoration:line-through}
 .note{margin:0;font-size:11px;color:var(--ink-subtle);line-height:1.6;padding:0 4px;text-wrap:pretty}
 .fgrid.five .mute{padding:0 2px;gap:4px}
-@media (max-width:440px){.fgrid.five .fader:not(.muted) .mute svg{display:none}}
+@media (max-width:440px){.fgrid.five .mute{flex-direction:column;height:auto;gap:3px;padding:3px 0}.fgrid.five .mute span{max-width:100%}}
 @media (hover:none){.kbd-hint{display:none}}
 @media (prefers-reduced-motion: reduce){.st-btn svg,.vf{transition:none}}
 </style>
