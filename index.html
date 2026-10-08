@@ -940,13 +940,26 @@ MOODS.dnb={name:'Drum & bass',desc:'Stadium DnB at 172–176 BPM: supersaws, gro
     const c=E.ctx,bpm=ri(172,176),six=60/bpm/4,mel=new Melody();
     const PR=[[0,8,3,10],[0,8,5,7],[0,3,10,8],[0,10,8,7],[0,5,3,10],[0,8,10,10]];
     const MQ={0:'m',5:'m',7:'m',3:'',8:'',10:''};
-    const K=makeKit(pick(['tight','k909'])),BV=pick(['neuro','reese','square']),LV=pick(['super','pluck','guitar']),PV=pick(['strings','saw','choir']),CS=pick(['hold','stabs']);
-    const BN={neuro:'neuro bass',reese:'growling reese',square:'square mid bass'},LN={super:'supersaw lead',pluck:'saw pluck',guitar:'distorted guitar'};
+    const BV=pick(['neuro','reese','reese','square']),LV=pick(['super','pluck','guitar']),PV=pick(['strings','saw','choir']),CS=BV==='neuro'?pick(['stabs','none']):pick(['stabs','stabs','hold']),TOP=chance(.7);
+    const BN={neuro:'neuro bass',reese:'rolling reese',square:'square mid bass'},LN={super:'supersaw lead',pluck:'saw pluck',guitar:'distorted guitar'};
     const STABS=[[0,3,6,10,12],[0,3,8,11,14],[2,6,10,14],[0,6,10,12]];
     const ch_=character(b,rnd(1.2,2.2));
     const hard=k=>{const n=1024,a=new Float32Array(n);for(let i=0;i<n;i++){const x=i/(n-1)*2-1;a[i]=Math.tanh(k*x)/Math.tanh(k)}return a};
     let key=ri(0,11),prog=pick(PR),cur=0,chName='—',section='intro',riff=[],stab=pick(STABS);
-    const drums=gain(.9),dhp=filt('highpass',900,.7);drums.connect(dhp);dhp.connect(b.input);const dsp=gain(.12);dhp.connect(dsp);dsp.connect(b.space);
+    const drums=gain(.9),dcomp=c.createDynamicsCompressor(),dsat=c.createWaveShaper(),dmk=gain(1.15),dhp=filt('highpass',900,.7);
+    dcomp.threshold.value=-22;dcomp.knee.value=4;dcomp.ratio.value=4;dcomp.attack.value=.004;dcomp.release.value=.09;dsat.curve=hard(1.4);
+    drums.connect(dcomp);dcomp.connect(dsat);dsat.connect(dmk);dmk.connect(dhp);dhp.connect(b.input);const dsp=gain(.12);dhp.connect(dsp);dsp.connect(b.space);
+    // DnB drums: short punchy kick with a click, two-layer snare (body + crack), crisp hats, and a quiet Amen top loop
+    const kickD=(t,v)=>{const o=osc('sine',190),g=gain(0);o.frequency.setValueAtTime(190,t);o.frequency.exponentialRampToValueAtTime(52,t+.05);
+      g.gain.setValueAtTime(v,t);g.gain.setTargetAtTime(0,t+.04,.09);o.connect(g);g.connect(drums);o.start(t);o.stop(t+.5);nhit(t,drums,v*.45,.01,'highpass',2800,.7)};
+    const snareD=(t,v)=>{for(const [f0,f1,a,dec] of [[220,185,.8,.1],[340,300,.35,.07]]){const o=osc('triangle',f0),g=gain(0);
+        o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+.04);g.gain.setValueAtTime(v*a,t);g.gain.exponentialRampToValueAtTime(.001,t+dec);
+        o.connect(g);g.connect(drums);o.start(t);o.stop(t+dec+.02)}
+      nhit(t,drums,v*.9,.17,'highpass',1700,.7);nhit(t,drums,v*.5,.035,'bandpass',4800,1.1)};
+    const hatD=(t,v,open)=>nhit(t,drums,v,open?.22:.028,'highpass',8500,.7);
+    const TA=['K','','K','','S','','','G','','G','K','K','S','','','G'],TB=['K','','K','','S','','','G','','G','K','','','G','S',''];
+    const topLoop=(t,s,bar)=>{const x=(bar%2?TB:TA)[s];if(x==='S'||x==='G')nhit(t,drums,x==='S'?.07:.035,.06,'bandpass',2600,.9);else if(x==='K')nhit(t,drums,.04,.05,'bandpass',900,1)};
+    const KP=[[0,10],[0,10,13],[0,7,10],[0,6,10]];let kp=pick(KP);
     // everything melodic ducks under kick and snare (the stadium pump)
     const pump=gain(1),psp=gain(.3);pump.connect(b.input);pump.connect(psp);psp.connect(b.space);
     const chords=gain(2),clp=filt('lowpass',2000,.7);chords.connect(clp);clp.connect(pump);
@@ -957,21 +970,27 @@ MOODS.dnb={name:'Drum & bass',desc:'Stadium DnB at 172–176 BPM: supersaws, gro
     // mid-bass: always-running saws -> drive -> resonant filter -> gate; a clean sine sub sits under it
     const m1=osc(BV==='square'?'square':'sawtooth',55),m2=osc('sawtooth',55),pre=gain(.5);m1.detune.value=-12;m2.detune.value=12;
     const sh=c.createWaveShaper();sh.oversample='2x';sh.curve=hard(BV==='neuro'?6:3);
-    const mf=filt('lowpass',600,BV==='neuro'?9:4),mg=gain(.2),mvca=gain(0),bassC=gain(1);
+    const mf=filt('lowpass',600,BV==='neuro'?9:4),mg=gain(.28),mvca=gain(0),bassC=gain(1);
     m1.connect(pre);m2.connect(pre);pre.connect(sh);sh.connect(mf);mf.connect(mg);mg.connect(mvca);mvca.connect(bassC);bassC.connect(b.input);
-    const so=osc('sine',41),svca=gain(0),subC=gain(.35);so.connect(svca);svca.connect(subC);subC.connect(b.input);
+    const so=osc('sine',41),svca=gain(0),subT=gain(1.2),subC=gain(.35);so.connect(svca);svca.connect(subT);subT.connect(subC);subC.connect(b.input);
     [m1,m2,so].forEach(o=>{o.start();b.nodes.push(o)});
-    const midNote=(t,m,len,shape)=>{const f=mtof(m);m1.frequency.setTargetAtTime(f,t,.008);m2.frequency.setTargetAtTime(f,t,.008);
+    const midNote=(t,m,len,shape,ph=0)=>{const f=mtof(m);m1.frequency.setTargetAtTime(f,t,.008);m2.frequency.setTargetAtTime(f,t,.008);
       const lo=f*2,hi=f*(8+p.bright*16);
-      if(shape==='wob'){for(let k=0;k*six<len;k++)mf.frequency.setTargetAtTime(k%2?lo:hi,t+k*six,six/3)}
+      if(shape==='roll'){mf.frequency.setTargetAtTime(lo+(hi-lo)*(.2+.6*(.5-.5*Math.cos(2*Math.PI*ph))),t,.12)}
+      else if(shape==='wob'){for(let k=0;k*six<len;k++)mf.frequency.setTargetAtTime(k%2?lo:hi,t+k*six,six/3)}
       else if(shape==='up'){mf.frequency.setTargetAtTime(lo,t,.005);mf.frequency.setTargetAtTime(hi,t+.01,len/2.5)}
       else if(shape==='down'){mf.frequency.setTargetAtTime(hi,t,.005);mf.frequency.setTargetAtTime(lo,t+.01,len/2.5)}
       else mf.frequency.setTargetAtTime((lo+hi)/2,t,.01);
-      mvca.gain.setTargetAtTime(1,t,.003);mvca.gain.setTargetAtTime(0,t+len-.01,.012)};
+      mvca.gain.setTargetAtTime(shape==='roll'?.55:0,t,.003);mvca.gain.setTargetAtTime(1,t+.004,.006);mvca.gain.setTargetAtTime(0,t+len-.01,.012)};
     // a two-bar riff (32 steps): only root, octave, fifth above and fifth below
-    const makeRiff=()=>{const r=[];let s=0;while(s<32){if(s>0&&chance(.22)){s+=pick([1,2]);continue}
-      const len=Math.min(pick([2,2,3,3,4,6]),32-s);r.push({s,len,iv:pick([0,0,0,12,12,7,-5]),sh:pick(['down','down','up','wob','hold'])});s+=len}return r};
-    riff=makeRiff();
+    // bass riffs, one bar each: [step, length, interval, filter move]; reese rolls 3-3-2 with a slow sweep across four bars
+    const RIFFS={
+      neuro:[[[0,4,0,'down'],[6,2,0,'up'],[8,2,12,'down'],[10,4,0,'wob'],[14,2,-5,'down']],[[0,3,0,'down'],[3,3,0,'down'],[6,2,12,'up'],[10,6,0,'wob']],
+             [[0,6,0,'wob'],[8,2,0,'down'],[10,2,0,'down'],[12,4,7,'up']],[[0,2,0,'down'],[3,2,0,'down'],[6,4,0,'up'],[10,2,12,'down'],[12,4,0,'wob']]],
+      reese:[[[0,3,0,'roll'],[3,3,0,'roll'],[6,2,0,'roll'],[8,3,0,'roll'],[11,3,0,'roll'],[14,2,0,'roll']],[[0,6,0,'roll'],[6,2,0,'roll'],[8,6,0,'roll'],[14,2,7,'roll']],
+             [[0,8,0,'roll'],[8,4,0,'roll'],[12,4,-5,'roll']]],
+      square:[[[0,3,0,'down'],[3,3,0,'down'],[6,2,0,'up'],[8,3,0,'down'],[11,3,0,'down'],[14,2,-5,'up']],[[0,2,0,'down'],[2,2,0,'down'],[4,4,7,'down'],[8,2,0,'down'],[10,2,0,'down'],[12,4,0,'up']]]};
+    riff=pick(RIFFS[BV]);
     const triad=deg=>{const r=(key+deg)%12,base=55+((r-7+12)%12);return [base,base+(MQ[deg]==='m'?3:4),base+7,base+12]};
     const sawChord=(t,notes,dur,v)=>notes.forEach(m=>{const f=mtof(m),g=gain(0);
       g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.015);g.gain.setValueAtTime(v,t+dur);g.gain.linearRampToValueAtTime(0,t+dur+.12);
@@ -991,33 +1010,34 @@ MOODS.dnb={name:'Drum & bass',desc:'Stadium DnB at 172–176 BPM: supersaws, gro
     return{
       stepDur:()=>six,
       step(t,n){
-        const s=n%16,bar=Math.floor(n/16),intro=bar<8,cyc=intro?-1:(bar-8)%32,drop=!intro&&cyc<24,brk=cyc>=24&&cyc<28,build=cyc>=28||(intro&&bar>=6),e=p.evolve;
+        const s=n%16,bar=Math.floor(n/16),intro=bar<4,cyc=intro?-1:(bar-4)%32,drop=!intro&&cyc<24,brk=cyc>=24&&cyc<28,build=cyc>=28||(intro&&bar>=2),e=p.evolve;
         if(s===0){
-          if(cyc===0&&bar>8&&(bar-8)%(e<.3?128:e<.7?64:32)===0){key=(key+pick([5,7,3,10]))%12;prog=pick(PR);emit(t,`new key: ${NOTE[key]}m`)}
+          if(cyc===0&&bar>4&&(bar-4)%(e<.3?128:e<.7?64:32)===0){key=(key+pick([5,7,3,10]))%12;prog=pick(PR);emit(t,`new key: ${NOTE[key]}m`)}
           if(bar%2===0){cur=prog[(bar/2)%prog.length];const r=(key+cur)%12;chName=NOTE[r]+MQ[cur];const tri=triad(cur);
-            if(drop&&CS==='hold')sawChord(t,tri,six*31,.03);
+            if(drop&&CS==='hold')sawChord(t,tri,six*31,.02);
             if(intro||brk)tri.slice(0,3).forEach(m=>padV(PV)(t,m,six*30,.03,padBus,{cut:900+p.bright*1500,att:1,rel:2}));
             if(drop){so.frequency.setTargetAtTime(mtof(28+(r+8)%12),t,.01);svca.gain.setTargetAtTime(1,t,.005)}else svca.gain.setTargetAtTime(0,t,.05);
             if(mel.bar(bar/2,p.melody,p.evolve)&&!intro&&LV!=='guitar')emit(t,'the lead plays a new theme')}
-          if(bar>8&&bar%(e>.66?4:e<.3?16:8)===0){riff=makeRiff();stab=pick(STABS);if(drop)emit(t,'the bass switches riff')}
-          if(bar===0){section='intro';emit(t,'intro: hats and a filtered kick')}
-          if(bar===6){section='build-up';riser(t,b.input,six*32,.1)}
+          if(bar>4&&(bar-4)%(e>.66?4:e<.3?16:8)===0){riff=pick(RIFFS[BV]);stab=pick(STABS);kp=pick(KP);if(drop)emit(t,'the bass switches riff')}
+          if(bar===0){section='intro';emit(t,'intro: break and a filtered kick')}
+          if(bar===2){section='build-up';riser(t,b.input,six*32,.1)}
           if(cyc===0){section='drop';dhp.frequency.setTargetAtTime(20,t,.02);crash(t,drums);emit(t,'drop!')}
           if(cyc===24){section='breakdown';emit(t,'breakdown: pads and lead')}
           if(cyc===28){section='build-up';riser(t,b.input,six*64,.1);emit(t,'build-up')}
         }
-        if(s%4===0){let cut;if(drop)cut=1200+p.bright*5000;else if(build){const k=intro?((bar-6)*16+s)/32:((cyc-28)*16+s)/64;cut=400+k*4000}else cut=600+p.bright*1200;clp.frequency.setTargetAtTime(cut,t,.1)}
+        if(s%4===0){let cut;if(drop)cut=CS==='hold'?900+p.bright*2500:1200+p.bright*5000;else if(build){const k=intro?((bar-2)*16+s)/32:((cyc-28)*16+s)/64;cut=400+k*4000}else cut=600+p.bright*1200;clp.frequency.setTargetAtTime(cut,t,.1)}
         const pumpHit=()=>{pump.gain.setTargetAtTime(.3,t,.004);pump.gain.setTargetAtTime(1,t+.02,six*1.3)};
-        if(intro){if(s===0||s===10)K.kick(t,drums,.7);if(s%2===0)K.hat(t,drums,.05*rnd(.8,1.1));if(bar===7&&s>=8)K.snare(t,drums,.08+(s-8)/8*.3)}
+        if(intro){if(kp.includes(s))kickD(t,.8);if(s%2===0)hatD(t,.05*rnd(.8,1.1));topLoop(t,s,bar);if(bar===3&&s>=8&&(s%2===0||s>=12))snareD(t,.12+(s-8)/8*.4)}
         else if(drop){
-          if(s===0||s===10||(p.density>.5&&s===13&&chance(.35))){K.kick(t,drums,1);pumpHit()}
-          if(s===4||s===12){K.snare(t,drums,.6,1.1);nhit(t,drums,.15,.06,'highpass',5000);pumpHit()}
-          if((s===7||s===15)&&chance(.2+p.density*.4))K.snare(t,drums,.1,1.15);
-          if(s%2===0||chance(p.density*.7))K.hat(t,drums,(s%4===2?.09:.05)*rnd(.8,1.1));
-          if(p.density>.45&&s%4===2)K.hat(t,drums,.05,true);
-        }else if(brk){if(s%4===0)K.hat(t,drums,.025)}
-        else{const k=cyc-28;if(k<2?s%4===0:k<3?s%2===0:true)K.snare(t,drums,.1+(k*16+s)/64*.4,1+k*.05);if(s%2===0)K.hat(t,drums,.04)}
-        if(drop){const nt=riff.find(x=>x.s===(bar%2)*16+s);if(nt){const r=(key+cur)%12;midNote(t,33+(r+3)%12+nt.iv,six*nt.len,nt.sh)}}
+          if(kp.includes(s)){kickD(t,1);pumpHit()}
+          if(s===4||s===12){snareD(t,.9);pumpHit()}
+          if((s===7||s===9||s===15)&&chance(.15+p.density*.35))snareD(t,.12);
+          if(s%2===0)hatD(t,(s%4===2?.07:.04)*rnd(.85,1.1));else if(chance(p.density*.6))hatD(t,.025*rnd(.8,1.2));
+          if(p.density>.4&&(s===6||s===14)&&chance(.4))hatD(t,.04,true);
+          if(TOP)topLoop(t,s,bar);
+        }else if(brk){if(s%4===0)hatD(t,.025)}
+        else{const k=cyc-28;if(k<2?s%4===0:k<3?s%2===0:true)snareD(t,.1+(k*16+s)/64*.5);if(s%2===0)hatD(t,.04)}
+        if(drop){const nt=riff.find(x=>x[0]===s);if(nt){const r=(key+cur)%12;midNote(t,33+(r+3)%12+nt[2],six*nt[1],nt[3],((bar%4)*16+s)/64)}}
         else if(s===0)mvca.gain.setTargetAtTime(0,t,.02);
         if(drop&&CS==='stabs'&&stab.includes(s))sawChord(t,triad(cur),six*1.6,.06);
         if(!intro&&LV==='guitar'){if(drop&&p.melody>.04&&s%2===0&&chance(.45+p.melody*.5)){const r=(key+cur)%12;chug(t,40+(r+8)%12,six*(s%4===0?1.8:1),s%4===0)}}
@@ -1025,7 +1045,7 @@ MOODS.dnb={name:'Drum & bass',desc:'Stadium DnB at 172–176 BPM: supersaws, gro
           if(e2){const r=(key+cur)%12,cp=[r,(r+(MQ[cur]==='m'?3:4))%12,(r+7)%12];jlead(t,melNote(e2.deg,ms,cp,key,AEOL,67,88,r),six*2*e2.len*.95)}}
       },
       mix:{drums:[[drums,.9]],bass:[[bassC,1]],sub:[[subC,.35]],chords:[[chords,2],[padBus,1]],lead:[[leadBus,1.6]]},
-      desc:()=>list([BN[BV],K.n,CS==='hold'?'supersaw chords':'supersaw stabs',PADV[PV],p.melody>.04?LN[LV]:'',ch_]),
+      desc:()=>list([BN[BV],TOP?'Amen top loop':'',CS==='hold'?'supersaw pads':CS==='stabs'?'supersaw stabs':'no chords',PADV[PV],p.melody>.04?LN[LV]:'',ch_]),
       info:()=>`${bpm} BPM · ${chName} · ${section}`
     }}};
 MOODS.hiphop={name:'Hip-hop',desc:'Boom bap, trap or G-funk: each variation picks its own style',

@@ -1,6 +1,6 @@
 // Work Radio service worker: the whole app is one page plus icons, so cache it for offline use.
 // Pages are served network-first so a new deploy shows up on the next launch; everything else is cache-first.
-const CACHE = 'work-radio-v3';
+const CACHE = 'work-radio-v4';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png'];
 
 self.addEventListener('install', e => {
