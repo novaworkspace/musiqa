@@ -2,7 +2,7 @@
 
 Generative music for focus, synthesized live in the browser with the Web Audio API. Nothing is pre-recorded, so it never repeats.
 
-Nine stations: White noise, Café, Nature, Lo-fi, Deep house, Intense, Jungle, Drum & bass, Hip-hop. Each "track" is a new variation with its own tempo, key and instruments; track length is adjustable from 2 to 7 minutes. Per-station character sliders and an instrument mixer are saved in the browser.
+Ten stations: White noise, Café, Nature, Ambient, Lo-fi, Deep house, Intense, Jungle, Drum & bass, Hip-hop. Each "track" is a new variation with its own tempo, key and instruments; track length is adjustable from 2 to 7 minutes. Per-station character sliders and an instrument mixer are saved in the browser.
 
 ## Install on a phone
 

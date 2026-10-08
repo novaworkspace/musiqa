@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Work Radio</title>
-<meta name="description" content="Generative work music: nine stations from white noise to drum and bass, synthesized live in the browser.">
+<meta name="description" content="Generative work music: ten stations from white noise to drum and bass, synthesized live in the browser.">
 <meta name="theme-color" content="#17181a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -30,7 +30,7 @@ img{max-width:100%}
   --ink:#e8e8e8; --ink-muted:#9a9c9f; --ink-subtle:#6d6f73;
   --color-sky-500:oklch(68.5% 0.169 237.323); --color-amber-500:oklch(76.9% 0.188 70.08); --color-emerald-500:oklch(69.6% 0.17 162.48);
   --color-violet-500:oklch(60.6% 0.25 292.717); --color-rose-500:oklch(64.5% 0.246 16.439); --color-orange-500:oklch(70.5% 0.213 47.604);
-  --color-teal-500:oklch(70.4% 0.14 182.503); --color-blue-500:oklch(62.3% 0.214 259.815); --color-yellow-500:oklch(79.5% 0.184 86.047);
+  --color-teal-500:oklch(70.4% 0.14 182.503); --color-blue-500:oklch(62.3% 0.214 259.815); --color-yellow-500:oklch(79.5% 0.184 86.047); --color-fuchsia-500:oklch(66.7% 0.295 322.15);
   --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans",Arial,sans-serif;
   --font-mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
   color-scheme:dark;
@@ -48,6 +48,7 @@ body{color:var(--ink);font-family:var(--font-sans);font-size:14px}
 .app[data-mood="jungle"]{--accent:var(--color-teal-500)}
 .app[data-mood="dnb"]{--accent:var(--color-blue-500)}
 .app[data-mood="hiphop"]{--accent:var(--color-yellow-500)}
+.app[data-mood="ambient"]{--accent:var(--color-fuchsia-500)}
 .wrap{max-width:500px;margin:0 auto;padding-block:20px 40px;padding-inline:16px;display:flex;flex-direction:column;gap:12px}
 button{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -190,7 +191,7 @@ input[type=range]:focus-visible{outline-offset:4px;border-radius:4px}
     <div class="fg"><div class="fg-label">INSTRUMENTS</div><div class="fgrid" id="instr"></div></div>
   </section>
 
-  <p class="note">Every sound is synthesized live in your browser, so nothing ever repeats. <span class="kbd-hint">Space pauses, 1–9 switch stations.</span></p>
+  <p class="note">Every sound is synthesized live in your browser, so nothing ever repeats. <span class="kbd-hint">Space pauses, 1–9 and 0 switch stations.</span></p>
 </main>
 </div>
 
@@ -1118,7 +1119,52 @@ MOODS.hiphop={name:'Hip-hop',desc:'Boom bap, trap or G-funk: each variation pick
       desc:()=>list([SN[SS],`chords: ${keyN(KV)}`,BVn==='808'?'808 bass':BASSV[BVn][0],K.n,p.melody>.04?(MV==='whine'?'synth whistle':MV==='pluck'?'pluck':keyN(MV)):'',ch_]),
       info:()=>`${bpm} BPM · ${SN[SS]} · ${ch?ch.name:'—'} · ${section}`
     }}};
-const ORDER=['noise','cafe','nature','lofi','house','intense','jungle','dnb','hiphop'];
+MOODS.ambient={name:'Ambient',desc:'Slow piano and pad loops that never line up the same way twice',
+  labels:{d:'Density',dh:['sparse','layered'],b:'Brightness',bh:['dark','airy'],mh:['pads only','piano loops']},
+  chan:[['keys','Piano'],['pads','Pads'],['drone','Drone'],['air','Air']],
+  spec:{tone:[900,14000],level:4.8,send:.45},def:{density:.45,bright:.5,melody:.55,evolve:.3},
+  make(b,p){
+    const c=E.ctx,T=c.currentTime;
+    // every note comes from one consonant set, so any two loops that meet still sound right
+    const SETS=[[[0,2,4,7,9],'pentatonic'],[[0,2,5,7,9],'suspended'],[[0,3,5,7,10],'minor pentatonic'],[[0,4,7,11,14],'major 9th'],[[0,2,4,7,11],'lydian']];
+    const [SET,setName]=pick(SETS),key=ri(0,11);
+    const KV=pick(['piano','vibes','glass','rhodes']),PV=pick(['soft','choir','strings','glass']);
+    const ch_=character(b,.6);
+    const notes=lo=>scaleRange(key,SET.map(x=>x%12),lo,lo+24);
+    const pickNote=()=>pick(notes(60));
+    const keys=gain(1);keys.connect(b.input);const ks=gain(.6);keys.connect(ks);ks.connect(b.space);
+    const padBus=gain(1);padBus.connect(b.input);padBus.connect(b.space);
+    // tape-loop pieces: each has its own period, so the pattern of coincidences never repeats
+    const loops=Array.from({length:8},(_,i)=>{const pn=c.createStereoPanner();pn.pan.value=rnd(-.7,.7);pn.connect(keys);
+      const per=rnd(14,34);return {per,next:T+1+rnd(0,per*.8),phrase:Array.from({length:ri(1,3)},pickNote),gap:rnd(.6,1.8),pn}});
+    const pads=Array.from({length:3},()=>({per:rnd(22,40),next:T+rnd(0,12),deg:pick(SET)}));
+    // a low drone on the root and fifth, breathing slowly
+    const d1=osc('sine',mtof(36+key)),d2=osc('sine',mtof(43+key)),d2g=gain(.35),dlp=filt('lowpass',400,.5),dg=gain(.02),dl=osc('sine',.05),dlg=gain(.008);
+    d1.connect(dlp);d2.connect(d2g);d2g.connect(dlp);dlp.connect(dg);dl.connect(dlg);dlg.connect(dg.gain);const droneC=gain(1);dg.connect(droneC);droneC.connect(b.input);droneC.connect(b.space);
+    // air: a faint band of tape hiss
+    const an=loop('pink'),ahp=filt('highpass',2500,.5),alp=filt('lowpass',9000,.5),ag=gain(.04),airC=gain(1);an.connect(ahp);ahp.connect(alp);alp.connect(ag);ag.connect(airC);airC.connect(b.input);
+    [d1,d2,dl].forEach(o=>o.start());b.nodes.push(d1,d2,dl,an);
+    let lastNote=-99,active=0;
+    return{
+      stepDur:()=>.25,
+      step(t){
+        const nLoops=4+Math.round(p.density*4);active=Math.round(nLoops*p.melody);
+        loops.forEach((L,i)=>{
+          if(t<L.next)return;
+          if(i<active){L.phrase.forEach((m,k)=>keyV(KV)(t+k*L.gap,m,rnd(3,6),rnd(.32,.46),L.pn));
+            if(chance(.06)){L.phrase[ri(0,L.phrase.length-1)]=pickNote();if(t-lastNote>90){lastNote=t;emit(t,'a loop picks a new note')}}}
+          L.next+=L.per;
+        });
+        const nPads=1+Math.round(p.density*2);
+        pads.forEach((P_,i)=>{if(t<P_.next)return;
+          if(i<nPads){const m=48+key+P_.deg+(chance(.4)?12:0);padV(PV)(t,m,rnd(8,12),.03,padBus,{cut:700+p.bright*1800,att:rnd(3,5),rel:rnd(5,8)})}
+          P_.next+=P_.per});
+      },
+      mix:{keys:[[keys,1]],pads:[[padBus,1]],drone:[[droneC,1]],air:[[airC,1]]},
+      desc:()=>list([`${keyN(KV)} loops`,PADV[PV],'low drone',ch_]),
+      info:()=>`${NOTE[key]} ${setName} · ${active} piano loop${active===1?'':'s'}`
+    }}};
+const ORDER=['noise','cafe','nature','ambient','lofi','house','intense','jungle','dnb','hiphop'];
 
 // ---------- engine
 function initAudio(){
@@ -1215,8 +1261,8 @@ const save=()=>{try{localStorage.setItem(KEY,JSON.stringify({mood:state.mood,vol
 
 // ---------- UI
 const app=$('#app'),playBtn=$('#play');
-const COL={noise:'sky',cafe:'amber',nature:'emerald',lofi:'violet',house:'rose',intense:'orange',jungle:'teal',dnb:'blue',hiphop:'yellow'};
-const GROUPS=[['AMBIENT',['noise','cafe','nature']],['RHYTHM',['lofi','house','intense','jungle','dnb','hiphop']]];
+const COL={ambient:'fuchsia',noise:'sky',cafe:'amber',nature:'emerald',lofi:'violet',house:'rose',intense:'orange',jungle:'teal',dnb:'blue',hiphop:'yellow'};
+const GROUPS=[['AMBIENT',['noise','cafe','nature','ambient']],['RHYTHM',['lofi','house','intense','jungle','dnb','hiphop']]];
 let played=0;
 const fmt=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return (h?h+':'+String(m).padStart(2,'0'):String(m).padStart(2,'0'))+':'+String(x).padStart(2,'0')};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -1226,7 +1272,7 @@ const ICON_OFF='<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stro
 // station menu
 function buildMenu(){
   $('#menu').innerHTML=GROUPS.map(([lab,ids])=>`<div class="mg">${lab}</div>`+ids.map(id=>{const on=id===state.mood;
-    return `<button class="mi${on?' on':''}" role="menuitemradio" aria-checked="${on}" data-id="${id}"><span class="d" style="background:var(--color-${COL[id]}-500)"></span><span class="nm">${esc(MOODS[id].name)}</span><span class="n">${ORDER.indexOf(id)+1}</span></button>`}).join('')).join('');
+    return `<button class="mi${on?' on':''}" role="menuitemradio" aria-checked="${on}" data-id="${id}"><span class="d" style="background:var(--color-${COL[id]}-500)"></span><span class="nm">${esc(MOODS[id].name)}</span><span class="n">${(ORDER.indexOf(id)+1)%10}</span></button>`}).join('')).join('');
 }
 function setMenu(open){
   $('#menu').hidden=!open;$('#backdrop').hidden=!open;$('#stBtn').setAttribute('aria-expanded',String(open));app.classList.toggle('menu-open',open);
@@ -1359,7 +1405,7 @@ document.addEventListener('keydown',e=>{
   const tag=e.target.tagName;
   if(e.code==='Space'&&tag!=='BUTTON'&&tag!=='INPUT'&&!e.target.closest('.vf')){e.preventDefault();E.playing?pause():play();return}
   if(e.key==='MediaTrackNext'){nextTrack();return}if(e.key==='MediaTrackPrevious'){prevStation();return}
-  const i=['1','2','3','4','5','6','7','8','9'].indexOf(e.key);
+  const i=['1','2','3','4','5','6','7','8','9','0'].indexOf(e.key);
   if(i>=0&&tag!=='INPUT')selectMood(ORDER[i]);
 });
 setInterval(()=>{if(E.playing)played++},1000);

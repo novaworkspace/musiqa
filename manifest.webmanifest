@@ -1,7 +1,7 @@
 {
   "name": "Work Radio",
   "short_name": "Work Radio",
-  "description": "Generative work music: nine stations from white noise to drum and bass, synthesized live in the browser.",
+  "description": "Generative work music: ten stations from white noise to drum and bass, synthesized live in the browser.",
   "start_url": "./",
   "scope": "./",
   "id": "./",
